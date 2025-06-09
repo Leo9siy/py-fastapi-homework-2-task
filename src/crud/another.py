@@ -18,6 +18,7 @@ async def get_or_create_country(db: AsyncSession, country_code: str):
     await db.refresh(country)
     return country
 
+
 async def get_or_create_genres(db: AsyncSession, genre_names: List[str]):
     genres = []
 

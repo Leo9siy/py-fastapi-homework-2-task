@@ -1,5 +1,4 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
-from pydantic import BaseModel
 from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -15,8 +14,10 @@ from schemas.movies import MovieListResponseSchema, MovieUpdateSchema, MovieCrea
     MessageResponse
 from schemas.movies import MovieBaseSchema
 
+
 router = APIRouter()
 route_prefix = "/theater/movies"
+
 
 @router.get("/movies/{movie_id}/", response_model=MovieDetailResponseSchema)
 async def get_movie(movie_id: int, db: AsyncSession = Depends(get_db)):
@@ -24,6 +25,7 @@ async def get_movie(movie_id: int, db: AsyncSession = Depends(get_db)):
     if not movie:
         raise HTTPException(status_code=404, detail="Movie with the given ID was not found.")
     return movie
+
 
 @router.delete("/movies/{movie_id}/", status_code=204)
 async def remove_movie(movie_id: int, db: AsyncSession = Depends(get_db)):
@@ -70,10 +72,10 @@ async def get_movies(
     movies = result.scalars().all()
 
     prev_page = (
-        f"{route_prefix}/?page={page-1}&per_page={per_page}" if page > 1 else None
+        f"{route_prefix}/?page={page - 1}&per_page={per_page}" if page > 1 else None
     )
     next_page = (
-        f"{route_prefix}/?page={page+1}&per_page={per_page}" if page < total_pages else None
+        f"{route_prefix}/?page={page + 1}&per_page={per_page}" if page < total_pages else None
     )
 
     return MovieListResponseSchema(

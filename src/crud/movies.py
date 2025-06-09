@@ -1,5 +1,5 @@
 from fastapi import HTTPException
-from sqlalchemy import select, func
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload, joinedload
 
@@ -19,9 +19,9 @@ async def read_movie(movie_id: int, db: AsyncSession):
         .where(MovieModel.id == movie_id)
         .options(
             joinedload(MovieModel.country),
-            joinedload(MovieModel.genres),
-            joinedload(MovieModel.actors),
-            joinedload(MovieModel.languages),
+            selectinload(MovieModel.genres),
+            selectinload(MovieModel.actors),
+            selectinload(MovieModel.languages),
         )
         .execution_options(populate_existing=True)
     )
@@ -63,24 +63,9 @@ async def post_movie(movie: MovieCreateSchema, db: AsyncSession):
         genres=genres,
     )
     db.add(new_movie)
-
     await db.commit()
 
-
-    stmt = (
-        select(MovieModel)
-        .where(MovieModel.id == new_movie.id)
-        .options(
-            selectinload(MovieModel.country),
-            selectinload(MovieModel.genres),
-            selectinload(MovieModel.actors),
-            selectinload(MovieModel.languages),
-        )
-    )
-    result = await db.execute(stmt)
-    movie_with_all_loaded = result.scalars().first()
-
-    return movie_with_all_loaded
+    return new_movie
 
 
 async def delete_movie(movie_id: int, db: AsyncSession):
