@@ -59,10 +59,10 @@ async def get_or_create_languages(db: AsyncSession, language_names: List[str]):
         result = await db.execute(select(LanguageModel).where(LanguageModel.name == name))
         language = result.scalar_one_or_none()
         if language is None:
-            actor = LanguageModel(name=name)
-            db.add(actor)
+            language = LanguageModel(name=name)
+            db.add(language)
             await db.commit()
-            await db.refresh(actor)
+            await db.refresh(language)
 
         languages.append(language)
 

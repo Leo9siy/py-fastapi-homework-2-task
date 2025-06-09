@@ -6,6 +6,10 @@ from pydantic import BaseModel, Field, ConfigDict, field_validator
 from database.models import MovieStatusEnum
 
 
+class MessageResponse(BaseModel):
+    detail: str
+
+
 class CountrySchema(BaseModel):
     id: int
     code: str
@@ -46,11 +50,11 @@ class MovieBaseSchema(BaseModel):
 
 
 class MovieUpdateSchema(BaseModel):
-    name: Optional[str]
-    date: Optional[datetime.date]
+    name: Optional[str] = None
+    date: Optional[datetime.date] = None
     score: Optional[float] = Field(None, ge=0, le=100)
-    overview: Optional[str]
-    status: Optional[MovieStatusEnum]
+    overview: Optional[str] = None
+    status: Optional[MovieStatusEnum] = None
     budget: Optional[float] = Field(None, ge=0)
     revenue: Optional[float] = Field(None, ge=0)
 

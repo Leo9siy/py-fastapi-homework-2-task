@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
+from pydantic import BaseModel
 from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -10,33 +11,34 @@ from crud import (
 )
 from database import get_db, MovieModel
 from schemas import MovieDetailResponseSchema
-from schemas.movies import MovieListResponseSchema, MovieUpdateSchema, MovieCreateSchema, MovieCreateResponse
+from schemas.movies import MovieListResponseSchema, MovieUpdateSchema, MovieCreateSchema, MovieCreateResponse, \
+    MessageResponse
 from schemas.movies import MovieBaseSchema
 
 router = APIRouter()
-
+route_prefix = "/theater/movies"
 
 @router.get("/movies/{movie_id}/", response_model=MovieDetailResponseSchema)
 async def get_movie(movie_id: int, db: AsyncSession = Depends(get_db)):
     movie = await read_movie(movie_id, db)
     if not movie:
-        raise HTTPException(status_code=404, detail="Movie not found")
+        raise HTTPException(status_code=404, detail="Movie with the given ID was not found.")
     return movie
 
 @router.delete("/movies/{movie_id}/", status_code=204)
 async def remove_movie(movie_id: int, db: AsyncSession = Depends(get_db)):
     status = await delete_movie(movie_id, db)
     if not status:
-        raise HTTPException(status_code=404, detail="Movie not found")
+        raise HTTPException(status_code=404, detail="Movie with the given ID was not found.")
     return
 
 
-@router.patch("/movies/{movie_id}/", response_model=MovieUpdateSchema)
+@router.patch("/movies/{movie_id}/", response_model=MessageResponse)
 async def patch_movie(movie_id: int, movie_update: MovieUpdateSchema, db: AsyncSession = Depends(get_db)):
     movie = await update_movie(movie_id, movie_update, db)
-    if not movie:
-        raise HTTPException(status_code=404, detail="Movie not found")
-    return movie
+    if movie is None:
+        raise HTTPException(status_code=404, detail="Movie with the given ID was not found.")
+    return {"detail": "Movie updated successfully."}
 
 
 @router.get("/movies/", response_model=MovieListResponseSchema)
@@ -49,11 +51,15 @@ async def get_movies(
     result_count = result.scalar_one()
 
     if result_count == 0:
-        raise HTTPException(status_code=404, detail="No movies found")
+        raise HTTPException(status_code=404, detail="No movies found.")
 
     # Pagination
 
     total_pages = (result_count + per_page - 1) // per_page
+
+    if page > total_pages:
+        raise HTTPException(status_code=404, detail="Page number exceeds total pages.")
+
     skip_results = (page - 1) * per_page
 
     result = await db.execute(
@@ -64,10 +70,10 @@ async def get_movies(
     movies = result.scalars().all()
 
     prev_page = (
-        f"/movies/?page={page-1}&per_page={per_page}" if page > 1 else None
+        f"{route_prefix}/?page={page-1}&per_page={per_page}" if page > 1 else None
     )
     next_page = (
-        f"/movies/?page={page+1}&per_page={per_page}" if page < total_pages else None
+        f"{route_prefix}/?page={page+1}&per_page={per_page}" if page < total_pages else None
     )
 
     return MovieListResponseSchema(
@@ -79,9 +85,9 @@ async def get_movies(
     )
 
 
-@router.post("/movies/", response_model=MovieCreateResponse)
+@router.post("/movies/", response_model=MovieCreateResponse, status_code=201)
 async def create_movie(movie: MovieCreateSchema, db: AsyncSession = Depends(get_db)):
     new_movie = await post_movie(movie, db)
     if not new_movie:
-        raise HTTPException(status_code=404, detail="Movie not found")
+        raise HTTPException(status_code=404, detail="Movie with the given ID was not found.")
     return new_movie

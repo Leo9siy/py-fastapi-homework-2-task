@@ -6,7 +6,7 @@ from database.models import (
 )
 from database.session_sqlite import reset_sqlite_database as reset_database
 
-environment = os.getenv("ENVIRONMENT", "developing")
+environment = os.getenv("ENVIRONMENT", "testing")
 
 if environment == "testing":
     from database.session_sqlite import (

@@ -1,5 +1,7 @@
+from fastapi import HTTPException
 from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload, joinedload
 
 from crud.another import (
     get_or_create_country,
@@ -12,12 +14,41 @@ from schemas.movies import MovieCreateSchema, MovieUpdateSchema
 
 
 async def read_movie(movie_id: int, db: AsyncSession):
-    result = await db.execute(select(MovieModel).where(MovieModel.id == movie_id))
-    movie = result.scalar_one_or_none()
+    result = await db.execute(
+        select(MovieModel)
+        .where(MovieModel.id == movie_id)
+        .options(
+            joinedload(MovieModel.country),
+            joinedload(MovieModel.genres),
+            joinedload(MovieModel.actors),
+            joinedload(MovieModel.languages),
+        )
+        .execution_options(populate_existing=True)
+    )
+
+    movie = result.unique().scalar_one_or_none()
     return movie
 
 
 async def post_movie(movie: MovieCreateSchema, db: AsyncSession):
+    result = await db.execute(
+        select(MovieModel).where(
+            MovieModel.name == movie.name,
+            MovieModel.date == movie.date
+        )
+    )
+    existing_movie = result.scalars().first()
+    if existing_movie:
+        raise HTTPException(
+            status_code=409,
+            detail=f"A movie with the name '{movie.name}' and release date '{movie.date}' already exists."
+        )
+
+    country = await get_or_create_country(db, movie.country)
+    genres = await get_or_create_genres(db, movie.genres)
+    actors = await get_or_create_actors(db, movie.actors)
+    languages = await get_or_create_languages(db, movie.languages)
+
     new_movie = MovieModel(
         name=movie.name,
         date=movie.date,
@@ -26,24 +57,30 @@ async def post_movie(movie: MovieCreateSchema, db: AsyncSession):
         status=movie.status,
         budget=movie.budget,
         revenue=movie.revenue,
+        country=country,
+        actors=actors,
+        languages=languages,
+        genres=genres,
     )
     db.add(new_movie)
-    await db.flush()
-
-    country = await get_or_create_country(db, movie.country)
-    genres = await get_or_create_genres(db, movie.genres)
-    actors = await get_or_create_actors(db, movie.actors)
-    languages = await get_or_create_languages(db, movie.languages)
-
-    new_movie.country = country
-    new_movie.genres = genres
-    new_movie.actors = actors
-    new_movie.languages = languages
 
     await db.commit()
-    await db.refresh(new_movie)
 
-    return new_movie
+
+    stmt = (
+        select(MovieModel)
+        .where(MovieModel.id == new_movie.id)
+        .options(
+            selectinload(MovieModel.country),
+            selectinload(MovieModel.genres),
+            selectinload(MovieModel.actors),
+            selectinload(MovieModel.languages),
+        )
+    )
+    result = await db.execute(stmt)
+    movie_with_all_loaded = result.scalars().first()
+
+    return movie_with_all_loaded
 
 
 async def delete_movie(movie_id: int, db: AsyncSession):
