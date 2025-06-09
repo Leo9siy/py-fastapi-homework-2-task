@@ -31,7 +31,7 @@ class TestingSettings(BaseAppSettings):
 
 
 def get_settings() -> BaseSettings:
-    environment = os.getenv("ENVIRONMENT", "testing")
+    environment = os.getenv("ENVIRONMENT", "developing")
     if environment == "testing":
         return TestingSettings()
     return Settings()
