@@ -5,7 +5,7 @@ from .movies import (
     read_movie
 )
 
-_all__ = [
+__all__ = [
     "delete_movie",
     "post_movie",
     "update_movie",

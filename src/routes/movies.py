@@ -90,6 +90,4 @@ async def get_movies(
 @router.post("/movies/", response_model=MovieCreateResponse, status_code=201)
 async def create_movie(movie: MovieCreateSchema, db: AsyncSession = Depends(get_db)):
     new_movie = await post_movie(movie, db)
-    if not new_movie:
-        raise HTTPException(status_code=404, detail="Movie with the given ID was not found.")
     return new_movie
